@@ -128,9 +128,6 @@ def save_quotes(quote_data, tag):
         return results
 
     return download_all_pages(tag, max_pages, max_quotes)
-
-
-
 if __name__ == '__main__':
     tag = args['tag'] if args['tag'] != None else input('Provide tag to search quotes for: ')
     mp = args['max_pages']
