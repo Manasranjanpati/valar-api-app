@@ -1,49 +1,41 @@
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.urls import reverse_lazy
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+
+from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.mixins import CreateModelMixin
+from django.http import HttpResponse
+from rest_framework.response import Response
+
 from .models import Quote
+from .serializers import QuoteSerializer
 
 
-class QuotesListView(ListView):
-    model = Quote
-    template_name = 'home.html'
-    context_object_name = 'quotes'
+class QuoteListView(CreateModelMixin, ListAPIView):
+    serializer_class = QuoteSerializer
+
+    def get_queryset(self):
+        try:
+            return Quote.objects.all().order_by('created')
+        except Quote.DoesNotExist:
+            content = {
+                'status': 'Model has no objects'
+            }
+            return Response(content, status=status.HTTP_204_NO_CONTENT)
+
+    def quote(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(creator=self.request.user)
 
 
-class QuotesDetailView(DetailView):
-    model = Quote
-    template_name = 'quote_detail.html'
-    context_object_name = 'quote'
+class QuoteDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = QuoteSerializer
 
-
-class QuotesCreateView(LoginRequiredMixin, CreateView):
-    model = Quote
-    template_name = 'quote_new.html'
-    fields = ('text', 'author')
-    login_url = 'login'
-
-    def form_valid(self, form):
-        form.instance.user = self.request.user
-        return super().form_valid(form)
-
-
-class QuotesUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    model = Quote
-    template_name = 'quote_edit.html'
-    fields = ('text', 'author')
-    login_url = 'login'
-
-    def test_func(self):
-        quote = self.get_object()
-        return quote.user == self.request.user
-
-
-class QuotesDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    model = Quote
-    template_name = 'quote_delete.html'
-    success_url = reverse_lazy('home')
-    login_url = 'login'
-
-    def test_func(self):
-        quote = self.get_object()
-        return quote.user == self.request.user
+    def get_queryset(self):
+        try:
+            Quote.objects.get(pk=self.kwargs['pk'])
+        except:
+            content = {
+                'status': 'Post Does Not Exist'
+            }
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+        return Quote.objects.all()
